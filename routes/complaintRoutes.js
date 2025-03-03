@@ -28,28 +28,23 @@
 // module.exports = router;
 
 const express = require("express");
-const { submitComplaint, getAllComplaints, validateReferenceNumber } = require("../controllers/complaintController");
 const multer = require("multer");
-const path = require("path");
+const { submitComplaint, getAllComplaints, getComplaintByReference } = require("../controllers/complaintController");
 
 const router = express.Router();
 
 // Multer Setup for File Uploads
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Ensure 'uploads/' directory exists
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 // Routes
 router.post("/submit", upload.array("files", 5), submitComplaint);
 router.get("/all", getAllComplaints);
-router.post("/validate/:referenceNumber", validateReferenceNumber); // Validation Route
+// router.get("/validate/:referenceNumber", validateReferenceNumber);
+router.post("/track", getComplaintByReference);
 
 module.exports = router;
-

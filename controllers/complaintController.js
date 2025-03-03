@@ -1,5 +1,6 @@
 const Complaint = require("../models/Complaint");
 const { v4: uuidv4 } = require("uuid");
+const sendComplaintEmail = require("../services/emailService");
 
 // Submit Complaint
 const submitComplaint = async (req, res) => {
@@ -17,10 +18,10 @@ const submitComplaint = async (req, res) => {
     // Generate reference number
     const referenceNumber = uuidv4().slice(0, 8).toUpperCase();
 
-    // Handle file uploads
-    const files = req.files ? req.files.map(file => file.path) : [];
+    // Handle file uploads (Ensure multer is set up in routes)
+    const files = req.files?.map(file => file.path) || [];
 
-    // Create new complaint
+    // Create new complaint object
     const newComplaint = new Complaint({
       personalInfo: { name, email, phone },
       complaintDetails: { title, category, description },
@@ -29,8 +30,12 @@ const submitComplaint = async (req, res) => {
       referenceNumber
     });
 
-    // Save complaint to database
+    // Save complaint to MongoDB
     const savedComplaint = await newComplaint.save();
+    console.log("Complaint saved successfully:", savedComplaint);
+
+    // Send confirmation email
+    await sendComplaintEmail(email, name, referenceNumber);
 
     // Send response with reference number
     res.status(201).json({ 
@@ -39,7 +44,7 @@ const submitComplaint = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in submitComplaint:", error);
+    console.error("❌ Error in submitComplaint:", error);
     res.status(500).json({ message: "Server Error: " + error.message });
   }
 };
@@ -50,30 +55,53 @@ const getAllComplaints = async (req, res) => {
     const complaints = await Complaint.find().sort({ createdAt: -1 });
     res.status(200).json(complaints);
   } catch (error) {
-    console.error("Error in getAllComplaints:", error);
+    console.error("❌ Error in getAllComplaints:", error);
     res.status(500).json({ message: "Server Error: " + error.message });
   }
 };
 
-//validate ref id
-const validateReferenceNumber = async (req, res) => {
-  try {
-    const { referenceNumber } = req.params;
+// Validate Reference Number
+// const validateReferenceNumber = async (req, res) => {
+//   try {
+//     const { referenceNumber } = req.params;
+//     const complaint = await Complaint.findOne({ referenceNumber });
 
-    // Example validation logic: Check if referenceNumber exists in database
+//     res.json({ valid: !!complaint });
+//   } catch (error) {
+//     console.error("❌ Validation error:", error);
+//     res.status(500).json({ message: "Server error during validation" });
+//   }
+// };
+
+const getComplaintByReference = async (req, res) => {
+  try {
+    const { referenceNumber } = req.body; // Reference number from input
+
+    if (!referenceNumber) {
+      return res.status(400).json({ message: "Reference number is required" });
+    }
+
     const complaint = await Complaint.findOne({ referenceNumber });
 
-    if (complaint) {
-      return res.json({ valid: true });
-    } else {
-      return res.json({ valid: false });
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found. Please check your reference number." });
     }
+
+    // Send only required fields to match frontend
+    res.json({
+      id: complaint.id,
+      title: complaint.complaintDetails.title, // Fix: Access nested field
+      category: complaint.complaintDetails.category, // Fix: Access nested field
+      status: complaint.status,
+      submittedDate: complaint.createdAt, // Fix: Use timestamps
+      lastUpdated: complaint.updatedAt, // Fix: Use timestamps
+      progressPercentage: 50, // Not present in schema, replace with logic if needed
+    });
   } catch (error) {
-    console.error("Validation error:", error);
-    res.status(500).json({ message: "Server error during validation" });
+    console.error("Error fetching complaint:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-module.exports = { submitComplaint, getAllComplaints, validateReferenceNumber };
 
-
+module.exports = { submitComplaint, getAllComplaints, getComplaintByReference };
