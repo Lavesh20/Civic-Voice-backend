@@ -9,13 +9,18 @@ const submitComplaint = async (req, res) => {
 
     const { name, email, phone, title, category, description, addressLine1, addressLine2, city, state, pincode } = req.body;
 
+    // Validate required fields
     if (!name || !email || !phone || !title || !category || !description || !addressLine1 || !city || !state || !pincode) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Generate reference number
     const referenceNumber = uuidv4().slice(0, 8).toUpperCase();
+
+    // Handle file uploads
     const files = req.files ? req.files.map(file => file.path) : [];
 
+    // Create new complaint
     const newComplaint = new Complaint({
       personalInfo: { name, email, phone },
       complaintDetails: { title, category, description },
@@ -24,8 +29,14 @@ const submitComplaint = async (req, res) => {
       referenceNumber
     });
 
-    await newComplaint.save();
-    res.status(201).json({ message: "Complaint submitted successfully", referenceNumber });
+    // Save complaint to database
+    const savedComplaint = await newComplaint.save();
+
+    // Send response with reference number
+    res.status(201).json({ 
+      message: "Complaint submitted successfully", 
+      referenceNumber: savedComplaint.referenceNumber 
+    });
 
   } catch (error) {
     console.error("Error in submitComplaint:", error);
@@ -44,4 +55,25 @@ const getAllComplaints = async (req, res) => {
   }
 };
 
-module.exports = { submitComplaint, getAllComplaints };
+//validate ref id
+const validateReferenceNumber = async (req, res) => {
+  try {
+    const { referenceNumber } = req.params;
+
+    // Example validation logic: Check if referenceNumber exists in database
+    const complaint = await Complaint.findOne({ referenceNumber });
+
+    if (complaint) {
+      return res.json({ valid: true });
+    } else {
+      return res.json({ valid: false });
+    }
+  } catch (error) {
+    console.error("Validation error:", error);
+    res.status(500).json({ message: "Server error during validation" });
+  }
+};
+
+module.exports = { submitComplaint, getAllComplaints, validateReferenceNumber };
+
+

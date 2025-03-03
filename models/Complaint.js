@@ -20,7 +20,7 @@ const complaintSchema = new mongoose.Schema({
   },
   files: { type: [String], default: [] },
   referenceNumber: { type: String, unique: true, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
+  status: { type: String, enum: ["Pending", "In Progress", "Completed"], default: "Pending" }, // Added Status
+}, { timestamps: true }); // Auto-manages createdAt & updatedAt
 
 module.exports = mongoose.model('Complaint', complaintSchema);
