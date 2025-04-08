@@ -19,7 +19,7 @@ const app = express();
 
 // CORS Configuration
 const corsOptions = {
-  origin: 'http://localhost:8080',
+  origin: 'https://civicvoice-rosy.vercel.app',
   credentials: true,
   optionsSuccessStatus: 200
 };
